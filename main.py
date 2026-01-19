@@ -9,12 +9,11 @@ import g4f
 from datetime import datetime
 import uuid
 from code_prompts import CODE_EXPERT_PROMPTS, get_code_prompt
-from providers_config import get_best_code_provider, FAST_PROVIDERS
 
 app = FastAPI(
-    title="Expert Code AI API - Ultra Fast & Advanced",
-    description="Optimized for Code Generation | Low Latency | Large Context | Advanced Prompts",
-    version="3.0.0"
+    title="Expert Code AI API - NO BLACKBOX!",
+    description="Optimized for Code | No Upgrade Messages | Free Forever",
+    version="3.0.2"
 )
 
 # CORS middleware
@@ -25,6 +24,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 🚫 BLACKBOX HARD BLOCKED!
+SAFE_PROVIDERS = {
+    "deepinfra": g4f.Provider.DeepInfra,
+    "phind": g4f.Provider.Phind,
+    "you": g4f.Provider.You,
+    "bing": g4f.Provider.Bing,
+}
+
+# Priority order for free providers (NO BLACKBOX!)
+PROVIDER_PRIORITY = [
+    g4f.Provider.DeepInfra,  # Best
+    g4f.Provider.Phind,      # Code-specialized
+    g4f.Provider.You,        # Good
+    g4f.Provider.Bing,       # Reliable
+]
+
+def get_safe_provider(provider_name: str = "auto"):
+    """Get a SAFE provider - NEVER returns Blackbox!"""
+    
+    # 🚫 BLOCK BLACKBOX EXPLICITLY
+    if provider_name and "blackbox" in provider_name.lower():
+        print("⚠️ Blackbox blocked! Using DeepInfra instead.")
+        return g4f.Provider.DeepInfra
+    
+    # If specific provider requested
+    if provider_name and provider_name.lower() in SAFE_PROVIDERS:
+        return SAFE_PROVIDERS[provider_name.lower()]
+    
+    # Auto mode: Return first safe provider from priority
+    # This ensures g4f never auto-selects Blackbox
+    return PROVIDER_PRIORITY[0]  # Always DeepInfra for consistency
 
 # Pydantic models
 class Message(BaseModel):
@@ -37,7 +68,7 @@ class ChatRequest(BaseModel):
     max_tokens: Optional[int] = Field(default=8192, description="Max tokens (up to 32K)")
     temperature: Optional[float] = Field(default=0.3, ge=0.0, le=2.0, description="Lower = more focused")
     stream: Optional[bool] = Field(default=True, description="Enable streaming")
-    provider: Optional[str] = Field(default="auto", description="AI provider")
+    provider: Optional[str] = Field(default="auto", description="AI provider (NOT blackbox!)")
     code_mode: Optional[bool] = Field(default=False, description="Enable expert code mode")
     language: Optional[str] = Field(default="auto", description="Programming language")
 
@@ -65,23 +96,14 @@ def convert_messages(messages: List[Message], code_mode: bool = False, language:
     
     return converted
 
-def get_provider_for_code(provider_name: str, code_mode: bool):
-    """Get optimized provider for code generation"""
-    if code_mode and provider_name == "auto":
-        return get_best_code_provider()
-    
-    if provider_name in FAST_PROVIDERS:
-        return FAST_PROVIDERS[provider_name]
-    
-    return None  # Auto-select
-
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
     return {
-        "name": "Expert Code AI API - Ultra Fast",
-        "version": "3.0.0",
+        "name": "Expert Code AI API - NO BLACKBOX!",
+        "version": "3.0.2",
         "status": "active",
+        "important": "🚫 BLACKBOX BLOCKED! No upgrade messages!",
         "optimizations": [
             "⚡ Low latency (0.5-2s first token)",
             "🚀 Fast streaming",
@@ -89,23 +111,27 @@ async def root():
             "📚 Large context (up to 32K tokens)",
             "🎯 Advanced system prompts",
             "🔄 Smart provider selection",
+            "🚫 NO BLACKBOX - No upgrade messages!",
             "100% Free"
         ],
+        "safe_providers": list(SAFE_PROVIDERS.keys()),
+        "blocked_providers": ["blackbox"],
         "features": {
             "code_mode": "Specialized for code generation",
             "streaming": "Ultra-fast token streaming",
             "context_window": "8K-32K tokens support",
             "latency": "<2 seconds first token",
-            "languages": "Python, JavaScript, Java, C++, Go, Rust, and more"
+            "languages": "Python, JavaScript, Java, C++, Go, Rust, and more",
+            "upgrade_messages": "NONE! Blackbox blocked!"
         },
         "endpoints": {
-            "/chat": "POST - Standard chat",
-            "/chat/stream": "POST - Fast streaming",
-            "/code": "POST - Expert code generation",
-            "/code/stream": "POST - Expert code streaming",
-            "/v1/chat/completions": "POST - OpenAI compatible",
+            "/chat": "POST - Standard chat (NO BLACKBOX)",
+            "/chat/stream": "POST - Fast streaming (NO BLACKBOX)",
+            "/code": "POST - Expert code generation (NO BLACKBOX)",
+            "/code/stream": "POST - Expert code streaming (NO BLACKBOX)",
+            "/v1/chat/completions": "POST - OpenAI compatible (NO BLACKBOX)",
             "/health": "GET - Health check",
-            "/providers": "GET - Available providers"
+            "/providers": "GET - Available providers (NO BLACKBOX)"
         },
         "documentation": "/docs"
     }
@@ -118,28 +144,34 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat(),
         "service": "expert-code-ai-api",
         "api_key_required": False,
+        "blackbox_blocked": True,
+        "upgrade_messages": "NONE",
         "latency": "optimized",
         "code_generation": "expert"
     }
 
 @app.get("/providers")
 async def list_providers():
-    """List all available AI providers"""
+    """List all SAFE AI providers (NO BLACKBOX!)"""
     return {
-        "fast_providers": list(FAST_PROVIDERS.keys()),
-        "code_optimized": ["deepinfra", "phind", "blackbox"],
-        "default": "auto",
-        "recommendation": "Use 'auto' for best performance"
+        "safe_providers": list(SAFE_PROVIDERS.keys()),
+        "blocked_providers": ["blackbox"],
+        "code_optimized": ["deepinfra", "phind"],
+        "default": "deepinfra",
+        "recommendation": "Use 'deepinfra' or 'auto' for best performance",
+        "note": "Blackbox is BLOCKED to prevent upgrade messages!"
     }
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    """Optimized chat endpoint"""
+    """Optimized chat endpoint - NO BLACKBOX!"""
     start_time = datetime.utcnow()
     
     try:
         messages = convert_messages(request.messages, request.code_mode, request.language)
-        provider = get_provider_for_code(request.provider, request.code_mode)
+        
+        # 🚫 GET SAFE PROVIDER (NEVER BLACKBOX!)
+        provider = get_safe_provider(request.provider)
         
         # Generate response with timeout
         response_text = await asyncio.wait_for(
@@ -147,11 +179,11 @@ async def chat(request: ChatRequest):
                 g4f.ChatCompletion.create,
                 model=request.model,
                 messages=messages,
-                provider=provider,
+                provider=provider,  # SAFE PROVIDER ONLY!
                 temperature=request.temperature,
                 max_tokens=request.max_tokens
             ),
-            timeout=30.0  # 30 second timeout
+            timeout=30.0
         )
         
         latency = int((datetime.utcnow() - start_time).total_seconds() * 1000)
@@ -164,7 +196,7 @@ async def chat(request: ChatRequest):
             model=request.model,
             role="assistant",
             content=response_text,
-            provider=request.provider,
+            provider="safe_provider (not blackbox)",
             latency_ms=latency,
             usage={
                 "input_tokens": int(input_tokens),
@@ -180,10 +212,12 @@ async def chat(request: ChatRequest):
 
 @app.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
-    """Ultra-fast streaming endpoint"""
+    """Ultra-fast streaming endpoint - NO BLACKBOX!"""
     try:
         messages = convert_messages(request.messages, request.code_mode, request.language)
-        provider = get_provider_for_code(request.provider, request.code_mode)
+        
+        # 🚫 GET SAFE PROVIDER (NEVER BLACKBOX!)
+        provider = get_safe_provider(request.provider)
         
         async def generate():
             first_token_sent = False
@@ -194,7 +228,7 @@ async def chat_stream(request: ChatRequest):
                 response_generator = g4f.ChatCompletion.create(
                     model=request.model,
                     messages=messages,
-                    provider=provider,
+                    provider=provider,  # SAFE PROVIDER ONLY!
                     temperature=request.temperature,
                     max_tokens=request.max_tokens,
                     stream=True
@@ -205,18 +239,18 @@ async def chat_stream(request: ChatRequest):
                         # Calculate first token latency
                         if not first_token_sent:
                             first_token_latency = int((datetime.utcnow() - start_time).total_seconds() * 1000)
-                            yield f"data: {json.dumps({'latency_ms': first_token_latency, 'first_token': True})}\n\n"
+                            yield f"data: {json.dumps({'latency_ms': first_token_latency, 'first_token': True, 'provider': 'safe (not blackbox)'})}\n\n"
                             first_token_sent = True
                         
                         total_content += chunk
                         yield f"data: {json.dumps({'content': chunk})}\n\n"
-                        await asyncio.sleep(0)  # Non-blocking
+                        await asyncio.sleep(0)
                 
                 # Final stats
                 total_latency = int((datetime.utcnow() - start_time).total_seconds() * 1000)
                 output_tokens = int(len(total_content.split()) * 1.3)
                 
-                yield f"data: {json.dumps({'done': True, 'total_latency_ms': total_latency, 'usage': {'output_tokens': output_tokens}})}\n\n"
+                yield f"data: {json.dumps({'done': True, 'total_latency_ms': total_latency, 'usage': {'output_tokens': output_tokens}, 'no_blackbox': True})}\n\n"
             
             except Exception as e:
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -236,28 +270,30 @@ async def chat_stream(request: ChatRequest):
 
 @app.post("/code")
 async def code_generation(request: ChatRequest):
-    """Expert code generation endpoint (non-streaming)"""
-    # Force code mode
+    """Expert code generation endpoint (non-streaming) - NO BLACKBOX!"""
+    # Force code mode and safe provider
     request.code_mode = True
-    request.temperature = 0.2  # Lower temperature for code
+    request.temperature = 0.2
     
     return await chat(request)
 
 @app.post("/code/stream")
 async def code_generation_stream(request: ChatRequest):
-    """Expert code generation endpoint (streaming)"""
-    # Force code mode
+    """Expert code generation endpoint (streaming) - NO BLACKBOX!"""
+    # Force code mode and safe provider
     request.code_mode = True
-    request.temperature = 0.2  # Lower temperature for code
+    request.temperature = 0.2
     
     return await chat_stream(request)
 
 @app.post("/v1/chat/completions")
 async def openai_compatible(request: ChatRequest):
-    """OpenAI-compatible endpoint with optimizations"""
+    """OpenAI-compatible endpoint - NO BLACKBOX!"""
     try:
         messages = convert_messages(request.messages, request.code_mode, request.language)
-        provider = get_provider_for_code(request.provider, request.code_mode)
+        
+        # 🚫 GET SAFE PROVIDER (NEVER BLACKBOX!)
+        provider = get_safe_provider(request.provider)
         
         if request.stream:
             async def generate():
@@ -269,7 +305,7 @@ async def openai_compatible(request: ChatRequest):
                     response_generator = g4f.ChatCompletion.create(
                         model=request.model,
                         messages=messages,
-                        provider=provider,
+                        provider=provider,  # SAFE PROVIDER ONLY!
                         temperature=request.temperature,
                         max_tokens=request.max_tokens,
                         stream=True
@@ -295,7 +331,7 @@ async def openai_compatible(request: ChatRequest):
                             chunk_id += 1
                             await asyncio.sleep(0)
                     
-                    # Final chunk with latency info
+                    # Final chunk
                     total_latency = int((datetime.utcnow() - start_time).total_seconds() * 1000)
                     final = {
                         "id": f"chatcmpl-{chunk_id}",
@@ -321,7 +357,7 @@ async def openai_compatible(request: ChatRequest):
                     g4f.ChatCompletion.create,
                     model=request.model,
                     messages=messages,
-                    provider=provider,
+                    provider=provider,  # SAFE PROVIDER ONLY!
                     temperature=request.temperature,
                     max_tokens=request.max_tokens
                 ),
@@ -362,4 +398,6 @@ async def openai_compatible(request: ChatRequest):
 if __name__ == "__main__":
     import uvicorn
     import os
+    print("🚫 Blackbox provider BLOCKED!")
+    print("✅ Only safe providers: DeepInfra, Phind, You, Bing")
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
