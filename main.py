@@ -12,9 +12,9 @@ from code_prompts import CODE_EXPERT_PROMPTS, get_code_prompt
 from providers_config import get_best_code_provider, FAST_PROVIDERS
 
 app = FastAPI(
-    title="Expert Code AI API - Ultra Fast & Large Context",
-    description="Optimized for Code | Low Latency | Up to 1M Tokens Support | Advanced Prompts",
-    version="3.1.0"
+    title="Expert Code AI API - Ultra Fast & Advanced",
+    description="Optimized for Code Generation | Low Latency | Large Context | Advanced Prompts",
+    version="3.0.0"
 )
 
 # CORS middleware
@@ -34,12 +34,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[Message] = Field(..., description="List of messages")
     model: Optional[str] = Field(default="gpt-4", description="Model name")
-    max_tokens: Optional[int] = Field(
-        default=8192, 
-        ge=1,
-        le=1000000,
-        description="Max tokens to generate (1 to 1,000,000). Note: Actual limit depends on provider."
-    )
+    max_tokens: Optional[int] = Field(default=8192, description="Max tokens (up to 32K)")
     temperature: Optional[float] = Field(default=0.3, ge=0.0, le=2.0, description="Lower = more focused")
     stream: Optional[bool] = Field(default=True, description="Enable streaming")
     provider: Optional[str] = Field(default="auto", description="AI provider")
@@ -54,28 +49,6 @@ class ChatResponse(BaseModel):
     provider: str
     latency_ms: Optional[int]
     usage: Dict[str, int]
-    token_limit_info: Optional[Dict[str, Any]] = None
-
-def get_token_limit_info(requested_tokens: int, provider: str) -> Dict[str, Any]:
-    """Provide information about token limits"""
-    provider_limits = {
-        "deepinfra": {"typical": 32000, "max": 100000},
-        "phind": {"typical": 16000, "max": 32000},
-        "blackbox": {"typical": 8000, "max": 16000},
-        "you": {"typical": 8000, "max": 16000},
-        "bing": {"typical": 4000, "max": 8000},
-        "auto": {"typical": 32000, "max": 100000}
-    }
-    
-    limit = provider_limits.get(provider, provider_limits["auto"])
-    
-    return {
-        "requested": requested_tokens,
-        "provider_typical": limit["typical"],
-        "provider_max": limit["max"],
-        "will_use": min(requested_tokens, limit["max"]),
-        "note": f"Provider may use up to {limit['max']} tokens. For larger contexts, response may be truncated."
-    }
 
 def convert_messages(messages: List[Message], code_mode: bool = False, language: str = "auto") -> List[Dict[str, str]]:
     """Convert messages with code optimization"""
@@ -106,14 +79,14 @@ def get_provider_for_code(provider_name: str, code_mode: bool):
 async def root():
     """Root endpoint with API information"""
     return {
-        "name": "Expert Code AI API - Ultra Fast & Large Context",
-        "version": "3.1.0",
+        "name": "Expert Code AI API - Ultra Fast",
+        "version": "3.0.0",
         "status": "active",
         "optimizations": [
             "⚡ Low latency (0.5-2s first token)",
             "🚀 Fast streaming",
             "💻 Expert code generation",
-            "📚 Large context (up to 1M tokens requested)",
+            "📚 Large context (up to 32K tokens)",
             "🎯 Advanced system prompts",
             "🔄 Smart provider selection",
             "100% Free"
@@ -121,16 +94,9 @@ async def root():
         "features": {
             "code_mode": "Specialized for code generation",
             "streaming": "Ultra-fast token streaming",
-            "max_tokens_api_limit": "1,000,000 (1M)",
-            "typical_provider_limit": "8K-100K tokens",
+            "context_window": "8K-32K tokens support",
             "latency": "<2 seconds first token",
             "languages": "Python, JavaScript, Java, C++, Go, Rust, and more"
-        },
-        "token_info": {
-            "api_accepts": "1 to 1,000,000 tokens",
-            "provider_limits": "Vary by provider (8K-100K typical)",
-            "recommendation": "Use 8K-32K for best compatibility",
-            "large_context": "100K+ may be truncated by providers"
         },
         "endpoints": {
             "/chat": "POST - Standard chat",
@@ -139,8 +105,7 @@ async def root():
             "/code/stream": "POST - Expert code streaming",
             "/v1/chat/completions": "POST - OpenAI compatible",
             "/health": "GET - Health check",
-            "/providers": "GET - Available providers",
-            "/token-limits": "GET - Token limit information"
+            "/providers": "GET - Available providers"
         },
         "documentation": "/docs"
     }
@@ -154,8 +119,7 @@ async def health_check():
         "service": "expert-code-ai-api",
         "api_key_required": False,
         "latency": "optimized",
-        "code_generation": "expert",
-        "max_tokens_supported": "1M (provider-dependent)"
+        "code_generation": "expert"
     }
 
 @app.get("/providers")
@@ -168,32 +132,6 @@ async def list_providers():
         "recommendation": "Use 'auto' for best performance"
     }
 
-@app.get("/token-limits")
-async def token_limits_info():
-    """Information about token limits by provider"""
-    return {
-        "api_accepts": {
-            "minimum": 1,
-            "maximum": 1000000,
-            "default": 8192
-        },
-        "provider_capabilities": {
-            "deepinfra": {"typical": "32K", "max": "100K", "recommended": True},
-            "phind": {"typical": "16K", "max": "32K", "recommended": True},
-            "blackbox": {"typical": "8K", "max": "16K", "recommended": False},
-            "you": {"typical": "8K", "max": "16K", "recommended": False},
-            "bing": {"typical": "4K", "max": "8K", "recommended": False},
-            "auto": {"typical": "32K", "max": "100K", "recommended": True}
-        },
-        "recommendations": [
-            "For best compatibility: Use 8K-32K tokens",
-            "For large contexts: Use 'deepinfra' provider with up to 100K",
-            "For 1M tokens: Request accepted but provider will use their max",
-            "Responses may be truncated if exceeding provider limits"
-        ],
-        "note": "API accepts up to 1M tokens, but actual limit depends on selected provider."
-    }
-
 @app.post("/chat")
 async def chat(request: ChatRequest):
     """Optimized chat endpoint"""
@@ -202,7 +140,6 @@ async def chat(request: ChatRequest):
     try:
         messages = convert_messages(request.messages, request.code_mode, request.language)
         provider = get_provider_for_code(request.provider, request.code_mode)
-        token_info = get_token_limit_info(request.max_tokens, request.provider)
         
         # Generate response with timeout
         response_text = await asyncio.wait_for(
@@ -214,7 +151,7 @@ async def chat(request: ChatRequest):
                 temperature=request.temperature,
                 max_tokens=request.max_tokens
             ),
-            timeout=60.0  # Increased to 60s for large contexts
+            timeout=30.0  # 30 second timeout
         )
         
         latency = int((datetime.utcnow() - start_time).total_seconds() * 1000)
@@ -233,12 +170,11 @@ async def chat(request: ChatRequest):
                 "input_tokens": int(input_tokens),
                 "output_tokens": int(output_tokens),
                 "total_tokens": int(input_tokens + output_tokens)
-            },
-            token_limit_info=token_info
+            }
         )
     
     except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="Request timeout - try streaming mode or reduce max_tokens")
+        raise HTTPException(status_code=504, detail="Request timeout - try streaming mode")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
@@ -248,15 +184,11 @@ async def chat_stream(request: ChatRequest):
     try:
         messages = convert_messages(request.messages, request.code_mode, request.language)
         provider = get_provider_for_code(request.provider, request.code_mode)
-        token_info = get_token_limit_info(request.max_tokens, request.provider)
         
         async def generate():
             first_token_sent = False
             start_time = datetime.utcnow()
             total_content = ""
-            
-            # Send token limit info first
-            yield f"data: {json.dumps({'token_limit_info': token_info})}\n\n"
             
             try:
                 response_generator = g4f.ChatCompletion.create(
@@ -393,7 +325,7 @@ async def openai_compatible(request: ChatRequest):
                     temperature=request.temperature,
                     max_tokens=request.max_tokens
                 ),
-                timeout=60.0
+                timeout=30.0
             )
             
             latency = int((datetime.utcnow() - start_time).total_seconds() * 1000)
