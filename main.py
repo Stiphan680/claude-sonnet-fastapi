@@ -1,18 +1,25 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from pydantic import BaseModel
+from typing import List, Optional
 import asyncio
 import json
-import g4f
 from datetime import datetime
 import uuid
 
+# Try importing g4f, handle if not available
+try:
+    import g4f
+    from g4f.Provider import Bing, You
+    G4F_AVAILABLE = True
+except:
+    G4F_AVAILABLE = False
+
 app = FastAPI(
-    title="Expert Code AI API",
-    description="Free Forever - No Upgrade Messages",
-    version="3.0.4"
+    title="Free AI API",
+    description="100% Free - No Limits",
+    version="4.0.0"
 )
 
 app.add_middleware(
@@ -30,137 +37,176 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[Message]
     model: Optional[str] = "gpt-4"
-    max_tokens: Optional[int] = 4096
     temperature: Optional[float] = 0.7
-    stream: Optional[bool] = False
+    max_tokens: Optional[int] = 2000
 
 @app.get("/")
 async def root():
     return {
         "status": "active",
-        "version": "3.0.4",
-        "message": "No Blackbox - Free Forever"
+        "version": "4.0.0",
+        "g4f_available": G4F_AVAILABLE,
+        "message": "Free AI API - Working!"
     }
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "time": datetime.utcnow().isoformat()}
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "g4f_status": "available" if G4F_AVAILABLE else "unavailable"
+    }
+
+async def generate_with_g4f(messages, model, temperature):
+    """Generate response using g4f with multiple provider fallbacks"""
+    
+    if not G4F_AVAILABLE:
+        return "G4F library not available. Please check deployment."
+    
+    # Providers to try in order (stable ones only)
+    providers_to_try = [
+        You,    # Most stable
+        Bing,   # Backup
+        None,   # Let g4f auto-select
+    ]
+    
+    last_error = None
+    
+    for provider in providers_to_try:
+        try:
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    g4f.ChatCompletion.create,
+                    model=model,
+                    messages=messages,
+                    provider=provider
+                ),
+                timeout=25.0
+            )
+            
+            # Convert to string and return if valid
+            result = str(response)
+            if result and len(result) > 10:
+                return result
+                
+        except asyncio.TimeoutError:
+            last_error = "Request timeout"
+            continue
+        except Exception as e:
+            last_error = str(e)
+            continue
+    
+    # All providers failed
+    return f"All providers busy. Please try again in a moment. (Last: {last_error})"
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
+    """Main chat endpoint with bulletproof error handling"""
+    
     try:
-        # Convert messages
-        msgs = [{"role": m.role, "content": m.content} for m in request.messages]
+        # Convert messages to dict format
+        messages = [{"role": m.role, "content": m.content} for m in request.messages]
         
-        # Let g4f auto-select provider (it will try multiple)
-        # We'll filter blackbox messages in response
-        response_text = await asyncio.wait_for(
-            asyncio.to_thread(
-                g4f.ChatCompletion.create,
-                model=request.model,
-                messages=msgs,
-                # NO provider specified - let g4f choose
-            ),
-            timeout=30.0
+        # Generate response
+        content = await generate_with_g4f(
+            messages=messages,
+            model=request.model,
+            temperature=request.temperature
         )
-        
-        # Convert to string
-        content = str(response_text)
-        
-        # 🔥 FILTER OUT BLACKBOX UPGRADE MESSAGES
-        blackbox_phrases = [
-            "You have not upgraded your account",
-            "Please upgrade to a premium plan",
-            "upgrade to premium",
-            "blackbox.ai/pricing",
-            "upgrade-required"
-        ]
-        
-        # Check if response contains blackbox upgrade message
-        is_blackbox_msg = any(phrase.lower() in content.lower() for phrase in blackbox_phrases)
-        
-        if is_blackbox_msg:
-            # Blackbox detected! Try again with different approach
-            # Return a clean error-free response
-            content = "I'm here to help! Could you please rephrase your question?"
         
         return {
             "id": f"chat-{uuid.uuid4().hex[:8]}",
-            "content": content,
+            "object": "chat.completion",
+            "created": int(datetime.utcnow().timestamp()),
             "model": request.model,
-            "filtered": is_blackbox_msg
+            "content": content,
+            "role": "assistant",
+            "usage": {
+                "total_tokens": len(content.split())
+            }
         }
         
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="Request timeout")
     except Exception as e:
-        # Don't crash, return helpful message
+        # Never return 500 - always return valid response
         return {
             "id": f"chat-error-{uuid.uuid4().hex[:8]}",
-            "content": f"Service temporarily unavailable. Please try again. ({str(e)[:50]})",
+            "object": "chat.completion",
+            "created": int(datetime.utcnow().timestamp()),
+            "model": request.model,
+            "content": f"Service temporarily busy. Please try again. (Error: {str(e)[:30]})",
+            "role": "assistant",
             "error": True
         }
 
 @app.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
-    try:
-        msgs = [{"role": m.role, "content": m.content} for m in request.messages]
-        
-        async def generate():
-            try:
-                full_response = ""
-                response_gen = g4f.ChatCompletion.create(
-                    model=request.model,
-                    messages=msgs,
-                    stream=True
-                )
-                
-                for chunk in response_gen:
-                    if chunk:
-                        chunk_str = str(chunk)
-                        full_response += chunk_str
-                        
-                        # Don't stream if it's a blackbox message
-                        if "upgrade" not in chunk_str.lower():
-                            yield f"data: {json.dumps({'content': chunk_str})}\n\n"
-                            await asyncio.sleep(0)
-                
-                # Check final response
-                blackbox_phrases = ["upgrade your account", "premium plan", "blackbox.ai"]
-                if any(p in full_response.lower() for p in blackbox_phrases):
-                    yield f"data: {json.dumps({'content': 'Response filtered. Please try again.', 'filtered': True})}\n\n"
-                
-                yield f"data: {json.dumps({'done': True})}\n\n"
-                
-            except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)[:100]})}\n\n"
-        
-        return StreamingResponse(generate(), media_type="text/event-stream")
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)[:100])
+    """Streaming endpoint"""
+    
+    messages = [{"role": m.role, "content": m.content} for m in request.messages]
+    
+    async def generate():
+        try:
+            if not G4F_AVAILABLE:
+                yield f"data: {json.dumps({'content': 'Service unavailable'})}\n\n"
+                return
+            
+            response = g4f.ChatCompletion.create(
+                model=request.model,
+                messages=messages,
+                provider=You,  # Use stable provider
+                stream=True
+            )
+            
+            for chunk in response:
+                if chunk:
+                    yield f"data: {json.dumps({'content': str(chunk)})}\n\n"
+                    await asyncio.sleep(0)
+            
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)[:50]})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive"
+        }
+    )
 
 @app.post("/code")
-async def code(request: ChatRequest):
+async def code_gen(request: ChatRequest):
+    """Code generation endpoint"""
     request.temperature = 0.2
     return await chat(request)
 
 @app.post("/v1/chat/completions")
-async def openai_compat(request: ChatRequest):
+async def openai_compatible(request: ChatRequest):
+    """OpenAI compatible endpoint"""
     result = await chat(request)
+    
     return {
         "id": result.get("id"),
         "object": "chat.completion",
-        "created": int(datetime.utcnow().timestamp()),
-        "model": request.model,
+        "created": result.get("created"),
+        "model": result.get("model"),
         "choices": [{
             "index": 0,
-            "message": {"role": "assistant", "content": result.get("content")},
+            "message": {
+                "role": "assistant",
+                "content": result.get("content")
+            },
             "finish_reason": "stop"
-        }]
+        }],
+        "usage": result.get("usage", {})
     }
 
 if __name__ == "__main__":
     import uvicorn
     import os
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+    port = int(os.getenv("PORT", 8000))
+    print(f"🚀 Starting API on port {port}")
+    print(f"✅ G4F Status: {'Available' if G4F_AVAILABLE else 'Unavailable'}")
+    uvicorn.run(app, host="0.0.0.0", port=port)

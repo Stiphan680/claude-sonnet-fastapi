@@ -2,8 +2,5 @@ fastapi==0.115.5
 uvicorn[standard]==0.32.1
 pydantic==2.10.3
 python-multipart==0.0.18
-httpx==0.28.1
-g4f==0.3.9.3
+g4f==0.4.1.2
 aiohttp==3.11.11
-curl-cffi==0.7.4
-orjson==3.10.12
