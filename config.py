@@ -1,22 +1,56 @@
-# AI Provider Configuration
-# Automatically handled by g4f library
+# Token Configuration
 
-DEFAULT_MODEL = "gpt-4"
-DEFAULT_TEMPERATURE = 0.7
-DEFAULT_MAX_TOKENS = 4096
+# API accepts up to 1M tokens
+MAX_TOKENS_API_LIMIT = 1000000
+DEFAULT_MAX_TOKENS = 8192
+MIN_MAX_TOKENS = 1
 
-# Provider priority (g4f auto-selects)
-PROVIDER_PRIORITY = [
-    "Bing",
-    "You",
-    "Phind",
-    "DeepInfra",
-    "Blackbox"
-]
+# Provider-specific token limits (approximate)
+PROVIDER_TOKEN_LIMITS = {
+    "deepinfra": {
+        "typical": 32000,
+        "maximum": 100000,
+        "recommended_for_large_context": True
+    },
+    "phind": {
+        "typical": 16000,
+        "maximum": 32000,
+        "recommended_for_large_context": False
+    },
+    "blackbox": {
+        "typical": 8000,
+        "maximum": 16000,
+        "recommended_for_large_context": False
+    },
+    "you": {
+        "typical": 8000,
+        "maximum": 16000,
+        "recommended_for_large_context": False
+    },
+    "bing": {
+        "typical": 4000,
+        "maximum": 8000,
+        "recommended_for_large_context": False
+    },
+    "auto": {
+        "typical": 32000,
+        "maximum": 100000,
+        "recommended_for_large_context": True
+    }
+}
 
-# Response settings
-STREAMING_ENABLED = True
-CORS_ALLOW_ALL = True
+# Recommendations
+RECOMMENDED_TOKEN_RANGES = {
+    "small_tasks": (1000, 4000),
+    "medium_tasks": (4000, 16000),
+    "large_tasks": (16000, 32000),
+    "very_large_tasks": (32000, 100000),
+    "ultra_large_tasks": (100000, 1000000)  # May be truncated
+}
 
-# Health check
-HEALTH_CHECK_INTERVAL = 300  # seconds
+# Performance settings
+TIMEOUT_CONFIG = {
+    "small_context": 30,   # < 10K tokens
+    "medium_context": 60,  # 10K-50K tokens
+    "large_context": 120   # > 50K tokens
+}
