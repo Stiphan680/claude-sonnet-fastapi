@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: claude-sonnet-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CUSTOM_API_KEY
+        sync: false
+        generateValue: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
