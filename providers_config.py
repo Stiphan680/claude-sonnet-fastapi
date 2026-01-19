@@ -1,33 +1,36 @@
-"""Provider configuration for optimized performance"""
+"""Provider configuration - NO BLACKBOX! Only free providers without upgrade messages"""
 import g4f
 
-# Fast providers optimized for code generation
+# ✅ FREE PROVIDERS - No upgrade messages!
+# ❌ Blackbox REMOVED - Was showing "Please upgrade to premium" messages
 FAST_PROVIDERS = {
     "auto": None,
-    "deepinfra": g4f.Provider.DeepInfra,  # Best for code, fast
-    "phind": g4f.Provider.Phind,  # Specialized for code
-    "blackbox": g4f.Provider.Blackbox,  # Fast for code
-    "you": g4f.Provider.You,  # Good balance
-    "bing": g4f.Provider.Bing,  # Reliable
+    "deepinfra": g4f.Provider.DeepInfra,  # ✅ Best for code, 100% free
+    "phind": g4f.Provider.Phind,          # ✅ Code-specialized, free
+    "you": g4f.Provider.You,              # ✅ Good balance, free
+    "bing": g4f.Provider.Bing,            # ✅ Reliable, free
+    # "blackbox": REMOVED! ❌ - Shows upgrade messages
 }
 
-# Provider priority for code generation
+# Provider priority for code generation (NO BLACKBOX!)
 CODE_PROVIDER_PRIORITY = [
-    g4f.Provider.DeepInfra,  # Best for code
-    g4f.Provider.Phind,  # Code-specialized
-    g4f.Provider.Blackbox,  # Fast code generation
-    g4f.Provider.You,  # Fallback
+    g4f.Provider.DeepInfra,  # ✅ Best for code, no upgrade messages
+    g4f.Provider.Phind,       # ✅ Code-specialized, always free
+    g4f.Provider.You,         # ✅ Fallback, no restrictions
+    g4f.Provider.Bing,        # ✅ Reliable, no premium needed
+    # Blackbox REMOVED from priority list!
 ]
 
 def get_best_code_provider():
-    """Get best available provider for code generation"""
+    """Get best available FREE provider (NO BLACKBOX!)"""
     # Return first available from priority list
+    # All these providers are 100% free with no upgrade messages
     for provider in CODE_PROVIDER_PRIORITY:
         try:
             return provider
         except:
             continue
-    return None  # Let g4f auto-select
+    return None  # Let g4f auto-select from free providers
 
 # Performance settings
 PERFORMANCE_CONFIG = {
@@ -36,3 +39,33 @@ PERFORMANCE_CONFIG = {
     "streaming_chunk_size": 64,  # bytes
     "connection_pool_size": 10,
 }
+
+# Provider info for users
+PROVIDER_INFO = {
+    "deepinfra": {
+        "status": "✅ Free",
+        "quality": "Excellent",
+        "speed": "Fast",
+        "upgrade_required": False
+    },
+    "phind": {
+        "status": "✅ Free",
+        "quality": "Very Good",
+        "speed": "Fast",
+        "upgrade_required": False
+    },
+    "you": {
+        "status": "✅ Free",
+        "quality": "Good",
+        "speed": "Medium",
+        "upgrade_required": False
+    },
+    "bing": {
+        "status": "✅ Free",
+        "quality": "Good",
+        "speed": "Medium",
+        "upgrade_required": False
+    }
+}
+
+print("✅ Providers loaded: NO BLACKBOX! Only free providers without upgrade messages.")
